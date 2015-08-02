@@ -42,6 +42,16 @@ int main(int argc, char **argv)
   /*
    * Version lesen */
   get_command();
+  usleep(100);
+  
+  /*
+   * Get ID */
+  get_id_command();
+  usleep(100);
+  
+  /*
+   * Start user application */
+  //go_command();
   
   printf("Ende\n");
 	return 0;

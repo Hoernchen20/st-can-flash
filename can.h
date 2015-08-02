@@ -41,5 +41,7 @@ void can_send_message (struct can_message *message);
 char check_ack(unsigned int id);
 void enter_bootloader(void);
 void get_command(void);
+void go_command(void);
+void get_id_command(void);
 #endif
 

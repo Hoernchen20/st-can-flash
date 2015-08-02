@@ -179,7 +179,53 @@ void get_command(void) {
       i++;
     }
   }
+  printf("-Get version and commands end: ");
   if (check_ack(0x00) != 1) {
     return;
+  }
+}
+
+void go_command(void) {
+  printf("Start user application: ");
+  struct can_message message;
+  message.id = 0x21;
+  message.rtr = 0;
+  message.length = 4;
+  message.data[0] = 0x1F;
+  message.data[0] = 0xFF;
+  message.data[0] = 0x00;
+  message.data[0] = 0x00;
+  
+  can_send_message(&message);
+  
+  if (check_ack(0x21) != 1) {
+    return;
+  }
+}
+
+void get_id_command(void) {
+  printf("Get ID: ");
+  unsigned char i;
+  struct can_message message;
+  message.id = 0x02;
+  message.rtr = 0;
+  message.length = 0;
+  
+  can_send_message(&message);
+  
+  if (check_ack(0x02) != 1) {
+    return;
+  }
+  usleep(100);
+  
+  for (i=0; i<255; i++) {
+    usleep(5);
+    if (can_read_message(&message) == 1) {
+      printf("-ID: %02X%02X\n-Get ID end: ", message.data[0], message.data[1]);
+      
+      if (check_ack(0x02) != 1) {
+        return;
+      }
+    }
   }
 }

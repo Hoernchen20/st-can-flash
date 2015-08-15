@@ -27,6 +27,22 @@
 #include "can.h"
 #include "mcp2515.h"
 
+#define ACK 0x79
+#define NACK 0x1F
+
+#define GET_COMMAND 0x00
+#define GET_VER_RP_STATUS_COMMAND 0x01
+#define GET_ID_COMMAND 0x02
+#define SPEED_COMMAND 0x03
+#define READ_MEM_COMMAND 0x11
+#define GO_COMMAND 0x21
+#define WRITE_MEM_COMMAND 0x31
+#define ERASE_COMMAND 0x43
+#define WRITE_PROTECT_COMMAND 0x63
+#define WRITE_UNPROTECT_COMMAND 0x73
+#define READOUT_PROTECT_COMMAND 0x82
+#define READOUT_UNPROTECT_COMMAND 0x92
+
 char can_read_message (struct can_message *message) {
     /*
      * Prüfen ob es eine neue CAN-Nachricht gibt,
@@ -77,11 +93,11 @@ char check_ack(unsigned int id) {
   for (i=0; i<255; i++) {
     usleep(5);
     if (can_read_message(&message) && message.id == id) {
-      if (message.data[0] == 0x79) {
+      if (message.data[0] == ACK) {
         printf("ACK erhalten\n");
         return 1;
       }
-      if (message.data[0] == 0x1F) {
+      if (message.data[0] == NACK) {
         printf("NACK erhalten\n");
         return 2;
       }
@@ -94,7 +110,7 @@ char check_ack(unsigned int id) {
 void enter_bootloader(void) {
   printf("Starte Bootloader: ");
   struct can_message message;
-  message.id = 0x79;
+  message.id = ACK;
   message.rtr = 0;
   message.length = 0;
   can_send_message(&message);
@@ -105,12 +121,12 @@ void enter_bootloader(void) {
 void get_command(void) {
   printf("Get version and commands: ");
   struct can_message message;
-  message.id = 0x00;
+  message.id = GET_COMMAND;
   message.rtr = 0;
   message.length = 0;
   can_send_message(&message);
   
-  if (check_ack(0x00) != 1) {
+  if (check_ack(GET_COMMAND) != 1) {
     return;
   }
   
@@ -180,25 +196,7 @@ void get_command(void) {
     }
   }
   printf("-Get version and commands end: ");
-  if (check_ack(0x00) != 1) {
-    return;
-  }
-}
-
-void go_command(void) {
-  printf("Start user application: ");
-  struct can_message message;
-  message.id = 0x21;
-  message.rtr = 0;
-  message.length = 4;
-  message.data[0] = 0x1F;
-  message.data[0] = 0xFF;
-  message.data[0] = 0x00;
-  message.data[0] = 0x00;
-  
-  can_send_message(&message);
-  
-  if (check_ack(0x21) != 1) {
+  if (check_ack(GET_COMMAND) != 1) {
     return;
   }
 }
@@ -207,13 +205,13 @@ void get_id_command(void) {
   printf("Get ID: ");
   unsigned char i;
   struct can_message message;
-  message.id = 0x02;
+  message.id = GET_ID_COMMAND;
   message.rtr = 0;
   message.length = 0;
   
   can_send_message(&message);
   
-  if (check_ack(0x02) != 1) {
+  if (check_ack(GET_ID_COMMAND) != 1) {
     return;
   }
   usleep(100);
@@ -223,9 +221,62 @@ void get_id_command(void) {
     if (can_read_message(&message) == 1) {
       printf("-ID: %02X%02X\n-Get ID end: ", message.data[0], message.data[1]);
       
-      if (check_ack(0x02) != 1) {
+      if (check_ack(GET_ID_COMMAND) != 1) {
         return;
       }
     }
   }
 }
+
+void read_mem_command(void) {
+  printf("Read Memory: ");
+  unsigned char i;
+  struct can_message message;
+  message.id = READ_MEM_COMMAND;
+  message.rtr = 0;
+  message.length = 4;
+  message.data[0] = 0x08;
+  message.data[1] = 0x00;
+  message.data[2] = 0x00;
+  message.data[3] = 0x00;
+  message.data[4] = 255;
+  
+  can_send_message(&message);
+  
+  if (check_ack(READ_MEM_COMMAND) != 1) {
+    return;
+  }
+  
+  usleep(100);
+  
+  for (i=0; i<255; i++) {
+    while (can_read_message(&message) != 1) {
+      usleep(5);
+    }
+    
+    printf("%d: %02X%02X%02X%02X%02X%02X%02X%02X\n", i, message.data[0], message.data[1], message.data[2], message.data[3], message.data[4], message.data[5], message.data[6], message.data[7]);
+  }
+  
+  if (check_ack(READ_MEM_COMMAND) != 1) {
+    return;
+  }
+}
+
+void go_command(void) {
+  printf("Start user application: ");
+  struct can_message message;
+  message.id = GO_COMMAND;
+  message.rtr = 0;
+  message.length = 4;
+  message.data[0] = 0x08;
+  message.data[1] = 0x00;
+  message.data[2] = 0x00;
+  message.data[3] = 0x00;
+  
+  can_send_message(&message);
+  
+  if (check_ack(GO_COMMAND) != 1) {
+    return;
+  }
+}
+

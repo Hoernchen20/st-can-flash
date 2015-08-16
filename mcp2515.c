@@ -55,9 +55,9 @@ void mcp2515_init(void) {
     char buf_3[3] = {WRITE, CANCTRL, (1<<CLKEN)/*|(1<<REQOP1)*/};
     bcm2835_spi_transfern(buf_3, 3);
     
+    #if MCP2515_Ausgabe
     printf("Initialisierung MCP2515: OK\n");
 
-    #if MCP2515_Ausgabe
     //Konfiguration für Ausgabe auslesen
     char buf_10[5] = {READ, CNF3, 0, 0, 0};
     bcm2835_spi_transfern(buf_10, 5);

@@ -86,29 +86,30 @@ void can_send_message (struct can_message *message) {
 
 char check_ack(unsigned int id) {
   struct can_message message;
-  unsigned char i;
+  unsigned int i;
   
   /*
    * mehrmals prüfen, ob eine Nachricht vorliegt */
-  for (i=0; i<255; i++) {
-    usleep(5);
-    if (can_read_message(&message) && message.id == id) {
-      if (message.data[0] == ACK) {
-        printf("ACK erhalten\n");
-        return 1;
-      }
-      if (message.data[0] == NACK) {
-        printf("NACK erhalten\n");
-        return 2;
+  for (i=0; i<65000; i++) {
+    if (can_read_message(&message)) {
+      if(message.id == id) {
+        if (message.data[0] == ACK) {
+          printf("ACK\n");
+          return 1;
+        }
+        if (message.data[0] == NACK) {
+          printf("NACK\n");
+          return 2;
+        }
       }
     }
   }
-  printf("Keine Antwort\n");
+  printf("No answer\n");
   return 0;
 }
 
 void enter_bootloader(void) {
-  printf("Starte Bootloader: ");
+  printf("Start bootloader: ");
   struct can_message message;
   message.id = ACK;
   message.rtr = 0;
@@ -121,6 +122,7 @@ void enter_bootloader(void) {
 void get_command(void) {
   printf("Get version and commands: ");
   struct can_message message;
+  unsigned int i, command_number = 0;
   message.id = GET_COMMAND;
   message.rtr = 0;
   message.length = 0;
@@ -130,80 +132,76 @@ void get_command(void) {
     return;
   }
   
-  int i = 0;
-  while(i < 14) {
-    usleep(100);
+  for (i=0; i<65000; i++) {
     if (can_read_message(&message) == 1) {
-      switch(i) {
-        case 0: {
-          printf("-Bytes to be sent: %d\n", message.data[0]);
-          break;
-        }
-        case 1: {
-          printf("-Bootloader Version: %d\n", message.data[0]);
-          break;
-        }
-        case 2: {
-          printf("-Get command: %02X\n", message.data[0]);
-          break;
-        }
-        case 3: {
-          printf("-Get Version & Read Protaction: %02X\n", message.data[0]);
-          break;
-        }
-        case 4: {
-          printf("-Get ID command: %02X\n", message.data[0]);
-          break;
-        }
-        case 5: {
-          printf("-Speed command: %02X\n", message.data[0]);
-          break;
-        }
-        case 6: {
-          printf("-Read memory command: %02X\n", message.data[0]);
-          break;
-        }
-        case 7: {
-          printf("-Go command: %d\n", message.data[0]);
-          break;
-        }
-        case 8: {
-          printf("-Write memory command: %d\n", message.data[0]);
-          break;
-        }
-        case 9: {
-          printf("-Erase memory command: %02X\n", message.data[0]);
-          break;
-        }
-        case 10: {
-          printf("-Write Protect command: %02X\n", message.data[0]);
-          break;
-        }
-        case 11: {
-          printf("-Write Unprotect command: %02X\n", message.data[0]);
-          break;
-        }
-        case 12: {
-          printf("-Readout Protect command: %02X\n", message.data[0]);
-          break;
-        }
-        case 13: {
-          printf("-Readout Unprotect command: %02X\n", message.data[0]);
-          break;
-        }
+    switch(command_number) {
+      case 0: {
+        printf("  -Bytes to be sent: %d\n", message.data[0]);
+        break;
       }
-      i++;
+      case 1: {
+        printf("  -Bootloader Version: %d\n", message.data[0]);
+        break;
+      }
+      case 2: {
+        printf("  -Get command: %02X\n", message.data[0]);
+        break;
+      }
+      case 3: {
+        printf("  -Get Version & Read Protaction: %02X\n", message.data[0]);
+        break;
+      }
+      case 4: {
+        printf("  -Get ID command: %02X\n", message.data[0]);
+        break;
+      }
+      case 5: {
+        printf("  -Speed command: %02X\n", message.data[0]);
+        break;
+      }
+      case 6: {
+        printf("  -Read memory command: %02X\n", message.data[0]);
+        break;
+      }
+      case 7: {
+        printf("  -Go command: %d\n", message.data[0]);
+        break;
+      }
+      case 8: {
+        printf("  -Write memory command: %d\n", message.data[0]);
+        break;
+      }
+      case 9: {
+        printf("  -Erase memory command: %02X\n", message.data[0]);
+        break;
+      }
+      case 10: {
+        printf("  -Write Protect command: %02X\n", message.data[0]);
+        break;
+      }
+      case 11: {
+        printf("  -Write Unprotect command: %02X\n", message.data[0]);
+        break;
+      }
+      case 12: {
+        printf("  -Readout Protect command: %02X\n", message.data[0]);
+        break;
+      }
+      case 13: {
+        printf("  -Readout Unprotect command: %02X\n", message.data[0]);
+        break;
+      }
+    }
+    command_number++;
     }
   }
-  printf("-Get version and commands end: ");
-  if (check_ack(GET_COMMAND) != 1) {
-    return;
-  }
+  printf("  -Get version and commands end: ");
+  check_ack(GET_COMMAND);
 }
 
 void get_id_command(void) {
   printf("Get ID: ");
-  unsigned char i;
+  unsigned int i;
   struct can_message message;
   message.id = GET_ID_COMMAND;
   message.rtr = 0;
@@ -214,27 +212,24 @@ void get_id_command(void) {
   if (check_ack(GET_ID_COMMAND) != 1) {
     return;
   }
-  usleep(100);
   
-  for (i=0; i<255; i++) {
-    usleep(5);
+  for (i=0; i<65000; i++) {
     if (can_read_message(&message) == 1) {
-      printf("-ID: %02X%02X\n-Get ID end: ", message.data[0], message.data[1]);
-      
-      if (check_ack(GET_ID_COMMAND) != 1) {
-        return;
-      }
-    }
+      printf("  -ID: %02X%02X\n  -Get ID end: ", message.data[0], message.data[1]);
+      break;
+    }  
   }
+  
+  check_ack(GET_ID_COMMAND);
 }
 
 void read_mem_command(void) {
   printf("Read Memory: ");
-  unsigned char i;
+  unsigned int i, num_receive_message = 0;
   struct can_message message;
   message.id = READ_MEM_COMMAND;
   message.rtr = 0;
-  message.length = 4;
+  message.length = 5;
   message.data[0] = 0x08;
   message.data[1] = 0x00;
   message.data[2] = 0x00;
@@ -247,19 +242,19 @@ void read_mem_command(void) {
     return;
   }
   
-  usleep(100);
-  
-  for (i=0; i<255; i++) {
-    while (can_read_message(&message) != 1) {
-      usleep(5);
+  for (i=0; i<65000; i++) {
+    if(can_read_message(&message) == 1) {
+      printf("%d: %02X%02X %02X%02X %02X%02X %02X%02X\n", num_receive_message, message.data[1], message.data[0], message.data[3], message.data[2], message.data[5],
+        message.data[4], message.data[7], message.data[8]);
+      num_receive_message++;
+      
+      if (num_receive_message >= 8) {
+        break;
+      }
     }
-    
-    printf("%d: %02X%02X%02X%02X%02X%02X%02X%02X\n", i, message.data[0], message.data[1], message.data[2], message.data[3], message.data[4], message.data[5], message.data[6], message.data[7]);
   }
   
-  if (check_ack(READ_MEM_COMMAND) != 1) {
-    return;
-  }
+  check_ack(READ_MEM_COMMAND);
 }
 
 void go_command(void) {

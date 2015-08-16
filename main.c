@@ -40,25 +40,25 @@ int main(int argc, char **argv)
   printf("ST-Flash over CAN v0.1\n");
   
   if (argc < 2) {
-    printf("Keine Parameter übergeben\n");
+    printf("No Options\n");
     return 0;
   }
   
   /*
-   * MCP2515 initialisieren */
+   * Init can-controller */
   mcp2515_init();
    
   /*
-   * Bootloader starten */
+   * Start bootloader */
   enter_bootloader();
   usleep(100);
   
   /*
-   *Verschiedene Programmteile starten*/
+   * start different programs */
   while ((c = getopt(argc, argv, "gvirswepu")) != -1) {
     switch (c) {
     /*
-     * Version lesen */
+     * Get bootloader version and allowed commands */
     case 'g':
       get_command();
       usleep(100);
@@ -104,7 +104,7 @@ int main(int argc, char **argv)
     }
   }
   
-  printf("Ende\n");
+  printf("End\n");
 	return 0;
 }
 

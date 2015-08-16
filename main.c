@@ -23,7 +23,7 @@
 
 
 #include <stdio.h>
-#include <unistd.h>
+#include <stdlib.h>
 #include "can.c"
 #include "mcp2515.c"
 
@@ -51,28 +51,25 @@ int main(int argc, char **argv)
   /*
    * Start bootloader */
   enter_bootloader();
-  usleep(100);
-  
+
   /*
    * start different programs */
-  while ((c = getopt(argc, argv, "gvirswepu")) != -1) {
+  while ((c = getopt(argc, argv, "gvir:swepu")) != -1) {
     switch (c) {
     /*
      * Get bootloader version and allowed commands */
     case 'g':
       get_command();
-      usleep(100);
       break;
     /*
      * Get ID */
     case 'i':
       get_id_command();
-      usleep(100);
       break;
     /*
      * Read Memory */
-     case 'r':
-      read_mem_command();
+    case 'r':
+      read_mem_command(atoi(optarg));
       break;
     /*
      * Start user application */

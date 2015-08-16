@@ -223,38 +223,58 @@ void get_id_command(void) {
   check_ack(GET_ID_COMMAND);
 }
 
-void read_mem_command(void) {
+void read_mem_command(int memory_size) {
   printf("Read Memory: ");
-  unsigned int i, num_receive_message = 0;
+  
+  int i, loop_counter, adress, num_receive_message = 0;
   struct can_message message;
-  message.id = READ_MEM_COMMAND;
-  message.rtr = 0;
-  message.length = 5;
-  message.data[0] = 0x08;
-  message.data[1] = 0x00;
-  message.data[2] = 0x00;
-  message.data[3] = 0x00;
-  message.data[4] = 255;
+  FILE *fp = fopen("read_memory.txt", "w");
   
-  can_send_message(&message);
-  
-  if (check_ack(READ_MEM_COMMAND) != 1) {
+  if (memory_size == 1024) {
+    loop_counter = 511;
+  } else {
+    printf("Wrong memory Size\n");
     return;
   }
-  
-  for (i=0; i<65000; i++) {
-    if(can_read_message(&message) == 1) {
-      printf("%d: %02X%02X %02X%02X %02X%02X %02X%02X\n", num_receive_message, message.data[1], message.data[0], message.data[3], message.data[2], message.data[5],
-        message.data[4], message.data[7], message.data[8]);
-      num_receive_message++;
+  memory_size = loop_counter;
+  loop_counter = 0; 
+
+  while (loop_counter <= memory_size) {
+    adress = 0x08000000 + loop_counter * 256;
+    printf("Read adress %x: ", adress);
+    
+    message.id = READ_MEM_COMMAND;
+    message.rtr = 0;
+    message.length = 5;
+    message.data[4] = 255;
+    message.data[3] = adress;
+    message.data[2] = adress>>8;
+    message.data[1] = adress>>16;
+    message.data[0] = adress>>24;
+    can_send_message(&message);
+    
+    if (check_ack(READ_MEM_COMMAND) != 1) {
+      return;
+    }  
       
-      if (num_receive_message >= 8) {
-        break;
+    for (i=0; i<65000; i++) {
+      if(can_read_message(&message) == 1) {
+        printf("*");
+        fprintf(fp, "%02X%02X %02X%02X %02X%02X %02X%02X ", message.data[1], message.data[0], message.data[3], message.data[2], message.data[5],
+          message.data[4], message.data[7], message.data[8]);
+        if (num_receive_message & 1) {
+          fprintf(fp, "\n");
+        }
+        if (num_receive_message >= 8) {
+          break;
+        }
+        num_receive_message++;
       }
     }
+    check_ack(READ_MEM_COMMAND);
+    loop_counter++;
   }
-  
-  check_ack(READ_MEM_COMMAND);
+  fclose(fp);
 }
 
 void go_command(void) {

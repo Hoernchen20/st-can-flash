@@ -94,29 +94,40 @@ char check_ack(unsigned int id) {
     if (can_read_message(&message)) {
       if(message.id == id) {
         if (message.data[0] == ACK) {
-          printf("ACK\n");
+          //printf("ACK\n");
           return 1;
         }
         if (message.data[0] == NACK) {
-          printf("NACK\n");
+          //printf("NACK\n");
           return 2;
         }
       }
     }
   }
-  printf("No answer\n");
+  //printf("No answer\n");
   return 0;
 }
 
 void enter_bootloader(void) {
   printf("Start bootloader: ");
+  char tmp;
   struct can_message message;
   message.id = ACK;
   message.rtr = 0;
   message.length = 0;
   can_send_message(&message);
   
-  check_ack(message.id);
+  tmp = check_ack(message.id);
+  
+  if (tmp == 0) {
+    printf("No answer\n");
+  } else if (tmp == 1) {
+    printf("ACK\n");
+  } else if (tmp == 2) {
+    printf("NACK\n");
+  } else {
+    printf("Error\n");
+  }
 }
 
 void get_command(void) {
@@ -223,56 +234,85 @@ void get_id_command(void) {
   check_ack(GET_ID_COMMAND);
 }
 
-void read_mem_command(int memory_size) {
-  printf("Read Memory: ");
-  
-  int i, loop_counter, adress, num_receive_message = 0;
+int read_mem_row(int adress, unsigned char *app_code) {
+  int i = 5000;
   struct can_message message;
+  message.id = READ_MEM_COMMAND;
+  message.rtr = 0;
+  message.length = 5;
+  message.data[4] = 5;
+  message.data[3] = adress;
+  message.data[2] = adress>>8;
+  message.data[1] = adress>>16;
+  message.data[0] = adress>>24;
+  can_send_message(&message);
+  
+  if (check_ack(READ_MEM_COMMAND) != 1) return 0;
+
+  while (can_read_message(&message) != 1) {
+    i--;
+    if (i == 0) return 0;
+  }
+  
+  for (i=0; i<6; i++) {
+    *app_code = message.data[i];
+    app_code++;
+  }
+  
+  if (check_ack(READ_MEM_COMMAND) != 1) return 0;
+  
+  return 1;
+}
+
+void read_mem_command(int memory_size) {
+  printf("Read Memory:\n");
+  
+  unsigned char app_code[7];
+  
+  int loop_counter, adress;
   FILE *fp = fopen("read_memory.txt", "w");
   
-  if (memory_size == 1024) {
-    loop_counter = 511;
-  } else {
-    printf("Wrong memory Size\n");
-    return;
-  }
-  memory_size = loop_counter;
-  loop_counter = 0; 
-
-  while (loop_counter <= memory_size) {
-    adress = 0x08000000 + loop_counter * 256;
-    printf("Read adress %x: ", adress);
-    
-    message.id = READ_MEM_COMMAND;
-    message.rtr = 0;
-    message.length = 5;
-    message.data[4] = 255;
-    message.data[3] = adress;
-    message.data[2] = adress>>8;
-    message.data[1] = adress>>16;
-    message.data[0] = adress>>24;
-    can_send_message(&message);
-    
-    if (check_ack(READ_MEM_COMMAND) != 1) {
+  switch (memory_size) {
+    case 4:
+      loop_counter = 1024;
+      break;
+    case 8:
+      loop_counter = 2048;
+      break;
+    case 16:
+      loop_counter = 4096;
+      break;
+    case 32:
+      loop_counter = 8192;
+      break;
+    case 64:
+      loop_counter = 16384;
+      break;
+    case 128:
+      loop_counter = 32768;
+      break;
+    default:
+      printf("Wrong memory size\n");
       return;
-    }  
-      
-    for (i=0; i<65000; i++) {
-      if(can_read_message(&message) == 1) {
-        printf("*");
-        fprintf(fp, "%02X%02X %02X%02X %02X%02X %02X%02X ", message.data[1], message.data[0], message.data[3], message.data[2], message.data[5],
-          message.data[4], message.data[7], message.data[8]);
-        if (num_receive_message & 1) {
-          fprintf(fp, "\n");
-        }
-        if (num_receive_message >= 8) {
-          break;
-        }
-        num_receive_message++;
-      }
+  }
+  
+  memory_size = loop_counter;
+
+  for (loop_counter = 1; loop_counter <= memory_size; loop_counter++) {
+    adress = 0x07FFFFFC + loop_counter * 4;
+    printf("Read Block %d of %d\n", loop_counter, memory_size);
+    read_mem_row(adress, app_code);
+    
+    /*printf("%02x%02x %02x%02x ", app_code[1], app_code[0],
+      app_code[3], app_code[2]);*/
+    
+    fprintf(fp, "%02x%02x %02x%02x ", app_code[1], app_code[0],
+      app_code[3], app_code[2]);
+    
+    if (!(loop_counter % 4)) {
+      printf("\n");
+      fprintf(fp, "\n");
     }
-    check_ack(READ_MEM_COMMAND);
-    loop_counter++;
   }
   fclose(fp);
 }

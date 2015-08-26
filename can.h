@@ -41,9 +41,12 @@ void can_send_message (struct can_message *message);
 char check_ack(unsigned int id);
 void enter_bootloader(void);
 void get_command(void);
-int read_mem_row(int adress, unsigned char *app_code);
+int read_mem_row(int adress, unsigned char *app_code, int n_bytes);
 void read_mem_command(int memory_size);
 void go_command(void);
+int write_mem_row(int adress, unsigned char *app_code, unsigned char n_bytes);
+int write_mem_command(unsigned int adress, char *file_name);
 void get_id_command(void);
+void erase_command(void);
 #endif
 

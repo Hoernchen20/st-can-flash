@@ -31,9 +31,9 @@
 int main(int argc, char **argv)
 {
   int c;
-  int bflg, aflg, errflg;
-  char *ifile;
-  char *ofile;
+ // int bflg, aflg, errflg;
+ // char *ifile;
+ // char *ofile;
   extern char *optarg;
   extern int optind, optopt;
 
@@ -54,7 +54,7 @@ int main(int argc, char **argv)
 
   /*
    * start different programs */
-  while ((c = getopt(argc, argv, "gvir:swepu")) != -1) {
+  while ((c = getopt(argc, argv, "gvir:sw:epu")) != -1) {
     switch (c) {
     /*
      * Get bootloader version and allowed commands */
@@ -75,6 +75,16 @@ int main(int argc, char **argv)
      * Start user application */
     case 's':
       go_command();
+      break;
+    /*
+     * Write Memory */
+    case 'w':
+      write_mem_command(0x08000000, optarg);
+      break;
+    /*
+     * Erase Memory */
+    case 'e':
+      erase_command();
       break;
     /*
      * Help text */

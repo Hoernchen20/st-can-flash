@@ -397,49 +397,39 @@ int write_mem_row(int adress, unsigned char *app_code, unsigned char n_bytes) {
 
 int write_mem_command(unsigned int adress, char *file_name) {
   printf("Write Memory:\n");
+  /*
+   * Open binary file */
+  char needle[] = ".bin";
+  if (strstr(file_name, needle) == NULL) {
+    printf("\tFile is not a binary file\n");
+    exit(0);
+  }
+  FILE *fp = fopen(file_name, "r");
+  if (fp == NULL) {
+    printf("\tFile cannot read\n");
+    exit(0);
+  }
   
   /*
    * Variables */
-  int tmp, tmp1 = 0;
+  int get_byte = 0;
   int byte_counter = 0;
   int error_counter = 0;
   int end_of_file = 0;
   static unsigned char write_bytes[8] = {0, 0, 0, 0};
   unsigned char read_bytes[8] = {0, 0, 0, 0};
-  FILE *fp = fopen(file_name, "r");
-  
-  /*unsigned char tmp2[4];
-  read_mem_row(0x08000000, tmp2, sizeof(tmp2));
-  printf("TEST: %02X %02X %02X %02X\n", tmp2[0], tmp2[1], tmp2[2], tmp2[3]);
-  
-  tmp2[0] = 0x03;
-  tmp2[1] = 0xcc;
-  tmp2[2] = 0xff;
-  tmp2[3] = 0xaa;
-  
-  write_mem_row(0x08000000, tmp2, sizeof(tmp2));
- 
-  read_mem_row(0x08000000, tmp2, sizeof(tmp2));
-  printf("TEST: %02X %02X %02X %02X\n", tmp2[0], tmp2[1], tmp2[2], tmp2[3]);*/
-  
-  /*
-   * XXX */
-  if (fp == NULL) {
-    printf("File cannot read\n");
-    exit(0);
-  }
 
   /*
    * Read bytes from file, save EOF and increase byte_counter */
   do {
-    if ((tmp = fgetc(fp)) == EOF) {
+    if ((get_byte = fgetc(fp)) == EOF) {
       end_of_file = TRUE;
       if (byte_counter == 0) {
         break;
       }
     }
     
-    write_bytes[byte_counter] = tmp;
+    write_bytes[byte_counter] = get_byte;
     byte_counter++;    
     
     /*
@@ -449,15 +439,15 @@ int write_mem_command(unsigned int adress, char *file_name) {
       printf("data: %02x%02x %02x%02x %02x%02x %02x%02x\n", write_bytes[0], write_bytes[1], write_bytes[2], write_bytes[3],
         write_bytes[4], write_bytes[5], write_bytes[6], write_bytes[7]);
     
+      /*
+       * Write bytes to flash, wait a moment, than read this byte from flash */
       while (1) {
         write_mem_row(adress, write_bytes, byte_counter);
-        usleep(100000);
         read_mem_row(adress, read_bytes, byte_counter/2);
         read_mem_row(adress+4, read_bytes+4, byte_counter/2);
-     
-        printf("read data: %02x%02x %02x%02x %02x%02x %02x%02x ", read_bytes[0], read_bytes[1], read_bytes[2], read_bytes[3],
-        read_bytes[4], read_bytes[5], read_bytes[6], read_bytes[7]);
         
+        /*
+         * After 10 tries of verify bytes exit program */
         if (error_counter > 9) {
           printf("Verify error !\n");
           fclose(fp);
@@ -465,11 +455,10 @@ int write_mem_command(unsigned int adress, char *file_name) {
         }
         
         error_counter++;
-        //printf("Number of try: %d\n", error_counter);
         
-        if ( (write_bytes[0] == read_bytes[0]) & (write_bytes[1] == read_bytes[1]) & (write_bytes[2] == read_bytes[2]) & (write_bytes[3] == read_bytes[3]) &
-          (write_bytes[4] == read_bytes[4]) & (write_bytes[5] == read_bytes[5]) & (write_bytes[6] == read_bytes[6]) & (write_bytes[7] == read_bytes[7]) ) {
-          printf("Number of try: %d\n", error_counter);
+        /*
+         * Compare write and read bytes and go to the next bytes if they are the same */
+        if ( memcmp(write_bytes, read_bytes, sizeof(write_bytes)) == 0 ) {
           break;
         }
       }
@@ -477,8 +466,7 @@ int write_mem_command(unsigned int adress, char *file_name) {
       byte_counter = 0;
       error_counter = 0;
       
-    } 
-    usleep(50000);
+    }
   } while (end_of_file != TRUE);
   
   printf("All datas are write\n");
@@ -491,7 +479,7 @@ void erase_command(void) {
   char tmp = -1;
   struct can_message message;
   message.id = ERASE_COMMAND;
-  message.rtr = 0;
+  message.rtr = FALSE;
   message.length = 1;
   message.data[0] = 0xFF;
   can_send_message(&message);

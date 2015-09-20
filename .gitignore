@@ -1,0 +1,9 @@
+#Ignore output
+*.o
+*.gch
+*.a
+*.*~
+*~
+
+#Ignore binaries for flashing
+/bin

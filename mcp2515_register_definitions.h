@@ -23,8 +23,8 @@
  * 
  */
 
-// ***** I/O REGISTER DEFINITIONS *****************************************
 
+// ***** I/O REGISTER DEFINITIONS *****************************************
 #define	TXB0CTRL	 0x30 // TRANSMIT BUFFER 0 CONTROL REGISTER
 #define	TXB1CTRL	 0x40 // TRANSMIT BUFFER 1 CONTROL REGISTER
 #define	TXB2CTRL	 0x50 // TRANSMIT BUFFER 2 CONTROL REGISTER

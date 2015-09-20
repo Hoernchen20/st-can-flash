@@ -1,7 +1,7 @@
 /*
  * mcp2515.c
  * 
- * Copyright 2014  Felix Horn
+ * Copyright 2015  Felix Horn
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

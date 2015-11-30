@@ -1,5 +1,5 @@
 /*
- * can.h
+ * bootloader_communication.h
  * 
  * Copyright 2015  Felix Horn
  * 
@@ -22,19 +22,16 @@
  */
  
  
-#ifndef CAN_H
-#define CAN_H
+#ifndef BOOTLOADER_COMMUNICATION_H
+#define BOOTLOADER_COMMUNICATION_H
 
 /* Includes ----------------------------------------------------------*/
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
-#include "mcp2515.h"
+#include "can.h"
 
 /* Exported constants ------------------------------------------------*/
-#define CAN_DEBUG 0
-
 /* Exported variables ------------------------------------------------*/
 extern char neue_minute;
 
@@ -46,8 +43,14 @@ typedef enum { FALSE, TRUE }bool;
 
 /* Exported macro ----------------------------------------------------*/
 /* Exported functions ------------------------------------------------*/
-void configCanBus(void);
-void sendCanMsg(can_message *Msg);
-bool receiveCanMsg(can_message *Msg);
+bool startBootloader(void);
+void printVersionAndCommands(void);
+void printChipId(void);
+void readMemory(int memory_size);
+void startMicrocontroller(void);
+int writeMemory(unsigned int adress, char *file_name);
+void eraseMemory(void);
 
-#endif /* CAN_H */
+
+
+#endif /* BOOTLOADER_COMMUNICATION_H */

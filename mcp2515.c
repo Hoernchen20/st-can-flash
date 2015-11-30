@@ -75,10 +75,10 @@ void mcp2515_init(void) {
 }
 
 //Statusregister des MCP2515 auslesen
-char mcp2515_status(void) {
+uint8_t mcp2515_status(void) {
     char buf[2] = {Read_Status, 0};
     bcm2835_spi_transfern(buf, 2);
-    return buf[1];
+    return (uint8_t)buf[1];
 }
 
 char txb0ctrl_status(void) {
@@ -93,61 +93,58 @@ char rx_status(void) {
     return buf[1];
 }
 
-char mcp2515_read_message (char *p_data) {
-    /*
-     * Prüfen, ob neue Nachricht da, wenn ja,
-     * auszulesende Bufferadresse zuweisen */
-    char temp = mcp2515_status();
-    if (temp & (1<<CANINTF_RX0IF)) {
-        temp = Read_RX0;
+bool mcp2515_read_message (can_message *Msg) {
+    char ReceiveData[14] = {0};
+    char DeleteInterrupt[4] = {Bit_Modify, CANINTF, 0, 0};
+    
+    /* check if new message in one of the fifos exist */
+    uint8_t Status = mcp2515_status();
+    if (Status & (1<<CANINTF_RX0IF)) {
+        ReceiveData[0] = Read_RX0;
+        DeleteInterrupt[2] = (1<<RX0IF);
     }
-    else if (temp & (1<<CANINTF_RX1IF)) {
-        temp = Read_RX1;
+    else if (Status & (1<<CANINTF_RX1IF)) {
+        ReceiveData[0] = Read_RX1;
+        DeleteInterrupt[2] = (1<<RX1IF);
     }
     else {
-        return 0;
+        return FALSE;
     }
     
-    /*
-     * Bufferadresse an den Anfang des temporären Arrays schreiben
-     * und Daten vom MCP2515 abholen */
-    char buf[14];
-    buf[0] = temp;
-    bcm2835_spi_transfern(buf, 14);
+    /* read out message */    
+    bcm2835_spi_transfern(ReceiveData, sizeof(ReceiveData));
     
-    /*
-     * Ensprechendes Interrupt-Flag löschen */
-    char buf_2[4];
-    buf_2[0] = Bit_Modify;
-    buf_2[1] = CANINTF;
-    buf_2[3] = 0;
-    if (temp == Read_RX0) {
-        buf_2[2] = (1<<RX0IF);
-    }
-    else {
-        buf_2[2] = (1<<RX1IF);
-    }
-    bcm2835_spi_transfern(buf_2, sizeof(buf_2));
+    /* delete interrupt flag */
+    bcm2835_spi_transfern(DeleteInterrupt, sizeof(DeleteInterrupt));
     
     #if MCP2515_Ausgabe
         unsigned char j;
         printf("Neue Nachricht\n");
-        printf("SIDH: %02X  SIDL: %02X  EID8: %02X  EID0: %02X  DLC: %02X  Daten: ",buf[1], buf[2], buf[3], buf[4], buf[5]);
+        printf("SIDH: %02X  SIDL: %02X  EID8: %02X  EID0: %02X  DLC: %02X  Daten: ",
+            ReceiveData[1], ReceiveData[2], ReceiveData[3], ReceiveData[4], ReceiveData[5]);
+            
         for(j=1; j<=buf[5]; j++) {
-            printf("%02X ", buf[j+5]);
+            printf("%02X ", ReceiveData[j+5]);
             }
         printf("\n");
     #endif
     
-    /* Temporäres Array um ein Byte zurückschieben,
-     * um Bufferadresse zu löschen */
-    unsigned char i;
-    for (i=0; i<13; i++) {
-        *p_data = buf[i+1];
-        p_data++;
+    /* sort receive data */
+    Msg->Id = ReceiveData[1];
+    Msg->Id = Msg->Id<<3;
+    Msg->Id = (Msg->Id|(ReceiveData[2]>>5));
+    Msg->DataLength = (ReceiveData[5]&((1<<DLC3)|(1<<DLC2)|(1<<DLC1)|(1<<DLC0)));
+    
+    for(uint8_t i=0; i < Msg->DataLength; i++) {
+        Msg->Data[i] = ReceiveData[i+6];
+        }
+    
+    /* check data length */
+    if(Msg->DataLength > 8) {
+        return FALSE;
     }
 
-    return 1;
+    return TRUE;
 }
     
 void tx_buffer_0_write(void) {
@@ -159,7 +156,7 @@ void tx_buffer_0_write(void) {
     bcm2835_spi_transfer(0b10000001);
 }
 
-char mcp2515_send_message (struct can_message *message) {
+char mcp2515_send_message (can_message *message) {
     /*
      * Freien Puffer auswählen */
     char status = 0;
@@ -186,15 +183,15 @@ char mcp2515_send_message (struct can_message *message) {
      * Temporäres Array erzeugen und die CAN-Nachricht dort hinein sortieren */
     char temp_msg[14];
     temp_msg[0] = buffer_adress;
-    temp_msg[1] = message->id>>3;
-    temp_msg[2] = ((char)message->id<<5)|0;
+    temp_msg[1] = message->Id>>3;
+    temp_msg[2] = ((char)message->Id<<5)|0;
     temp_msg[3] = 0;
     temp_msg[4] = 0;
-    temp_msg[5] = ((char)(message->rtr<<6)|(message->length));
+    temp_msg[5] = message->DataLength;
 	unsigned char i;
-    for (i=0; i<message->length; i++)
+    for (i=0; i<message->DataLength; i++)
 	{
-    	temp_msg[6+i] = (message->data[i]);
+    	temp_msg[6+i] = (message->Data[i]);
 	}
 	
 	/*

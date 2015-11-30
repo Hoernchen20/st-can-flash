@@ -25,18 +25,28 @@
 
 
 #include "mcp2515_register_definitions.h"
-#include "can.h"
+
+#ifndef BOOL
+#define BOOL
+typedef enum { FALSE, TRUE }bool;
+#endif
+
+typedef struct {
+    uint16_t    Id;
+    uint8_t     DataLength;
+    uint8_t     Data[8];
+}can_message;
 
 //Ausgabe
 #define MCP2515_Ausgabe 0
 
 //Funktionen
 void mcp2515_init(void);
-char mcp2515_status(void);
+uint8_t mcp2515_status(void);
 char txb0ctrl_status(void);
 char rx_status(void);
-char mcp2515_read_message (char *p_data);
+bool mcp2515_read_message (can_message *message);
 void tx_buffer_0_write(void);
-char mcp2515_send_message (struct can_message *message);
+char mcp2515_send_message (can_message *message);
 
 #endif
